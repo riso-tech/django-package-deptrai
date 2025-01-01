@@ -21,7 +21,6 @@ runs:
   - uses: pre-commit/action@v3.0.0
 
   - name: Lint Summary
-    if: always()
     shell: bash
     run: |
       echo "### 🔍 Linting Results" >> $GITHUB_STEP_SUMMARY
