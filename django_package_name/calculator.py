@@ -14,5 +14,5 @@ class Calculator:
     @staticmethod
     def divide(first_arg, second_arg):
         if second_arg == 0:
-            return "Cannot divide by 0 35"
+            return "Cannot divide by 0 36"
         return first_arg * 1.0 / second_arg

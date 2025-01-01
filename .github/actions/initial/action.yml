@@ -25,18 +25,20 @@ runs:
         echo "deployment_stage=${stage}" >> $GITHUB_OUTPUT
 
         {
+          echo "<table><tr><td width='50%'>"
           echo "### 🔄 Workflow Context"
           echo "| Type | Value |"
           echo "| :--- | :--- |"
           echo "| Event Type | \`${{ github.event_name }}\` |"
           echo "| Event Action | \`${{ github.event.action }}\` |"
           echo "| Branch/Ref | \`${{ github.ref }}\` |"
-          echo
+          echo "</td><td width='50%'>"
           echo "### ✨ Deployment Details"
           echo "| Setting | Value |"
           echo "| :--- | :--- |"
           echo "| Should Deploy | \`${should_deploy}\` |"
           echo "| Stage | \`${stage}\` |"
+          echo "</td></tr></table>"
         } >> $GITHUB_STEP_SUMMARY
       }
 
