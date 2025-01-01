@@ -1,5 +1,5 @@
 name: Pre-Commit Linter
-description: 'Run pre-commit hooks to lint Python code'
+description: 'Run pre-commit linter on your codebase'
 
 inputs:
   python-version:
@@ -10,7 +10,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-  - name: Setup python ${{ inputs.python-version }}
+  - name: Set up Python ${{ inputs.python-version }}
     uses: actions/setup-python@v5
     with:
       python-version: ${{ inputs.python-version }}
@@ -22,7 +22,7 @@ runs:
   - name: Pre-Commit Action
     uses: pre-commit/action@v3.0.0
 
-  - name: Lint Summary
+  - name: Linter Summary
     shell: bash
     run: |
       echo "### 🔍 Linting Results" >> $GITHUB_STEP_SUMMARY
