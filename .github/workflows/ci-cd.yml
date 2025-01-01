@@ -56,7 +56,7 @@ jobs:
       run: |
         echo "should_deploy=${{ steps.initial.outputs.should_deploy }}" >> $GITHUB_ENV
         echo "deployment_stage=${{ steps.initial.outputs.deployment_stage }}" >> $GITHUB_ENV
-        echo "version=${{ steps.initial.outputs.version }}" >> $GITHUB_ENV
+        echo "VERSION=${{ steps.initial.outputs.version }}" >> $GITHUB_ENV
 
   pre-commit-linter:
     runs-on: ubuntu-latest
@@ -95,4 +95,4 @@ jobs:
       uses: ./.github/actions/python-build
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        version-name: ${{ needs.initial_workflow.outputs.version }}
+        version-name: ${{ env.VERSION }}
