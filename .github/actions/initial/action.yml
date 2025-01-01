@@ -8,6 +8,9 @@ outputs:
   deployment_stage:
     description: 'Deployment stage'
     value: ${{ steps.check.outputs.deployment_stage }}
+  version:
+    description: 'New version'
+    value: ${{ steps.check.outputs.version }}
 
 runs:
   using: "composite"
@@ -26,7 +29,6 @@ runs:
         local version=$6
 
         {
-          echo "<h2>🚦 Workflow Summary</h2>"
           echo "<div><table width='100%'><tr>"
 
           # Event Information
