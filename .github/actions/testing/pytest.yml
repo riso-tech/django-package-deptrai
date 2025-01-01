@@ -1,0 +1,58 @@
+name: PyTest and Coverage
+description: 'Run PyTest and Coverage with CodeCov Report'
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+
+runs:
+  using: "composite"
+  steps:
+  - name: Set up Python ${{ inputs.python-version }}
+    uses: actions/setup-python@v4
+    with:
+      python-version: ${{ inputs.python-version }}
+      cache: pip
+      cache-dependency-path: |
+        requirements.txt
+
+  - name: Install Dependencies
+    shell: bash
+    run: |
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+
+  - name: Run Tests & Coverage
+    id: test
+    shell: bash
+    run: |
+      coverage run -m pytest
+      echo "PYTEST_EXIT_CODE=$?" >> $GITHUB_ENV
+
+      echo "### 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+
+        if [ "$?" == "0" ]; then
+        echo "✅ All tests passed" >> $GITHUB_STEP_SUMMARY
+
+        coverage xml
+        echo "### 📊 Coverage Report" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        coverage report --format=text | sed 's/^/    /' >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+        # Add summary percentage with Codecov badge
+        echo "#### Overall Coverage: [![codecov](https://codecov.io/gh/${{ github.repository }}/branch/${{ github.ref_name }}/graph/badge.svg)](https://codecov.io/gh/${{ github.repository }})" >> $GITHUB_STEP_SUMMARY
+      else
+        echo "❌ Tests failed" >> $GITHUB_STEP_SUMMARY
+      fi
+
+  - name: Upload Coverage
+    if: env.PYTEST_EXIT_CODE == 0
+    uses: codecov/codecov-action@v4
+    with:
+      token: ${{ secrets.CODECOV_TOKEN }}
+      files: ./coverage.xml
+      flags: unittests
+      fail_ci_if_error: true
