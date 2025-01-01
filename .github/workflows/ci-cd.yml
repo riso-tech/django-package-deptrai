@@ -34,7 +34,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/python-linter
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Pre-Commit Linter
+        uses: ./.github/actions/python-linter
         with:
           python-version: ${{ env.PYTHON_VERSION }}
