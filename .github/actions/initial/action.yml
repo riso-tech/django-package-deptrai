@@ -1,16 +1,13 @@
-name: Initial
-description: 'Build release distributions for Python package'
+name: Initial Environment Variables
+description: 'Set initial environment variables for the workflow'
 
 outputs:
-  run_cd:
-    description: 'Run CD'
-    value: ${{ steps.check.outputs.run_cd }}
-  stage:
-    description: 'Stage'
-    value: ${{ steps.check.outputs.stage }}
-  version:
-    description: 'Stage'
-    value: ${{ steps.check.outputs.version }}
+  should_deploy:
+    description: 'Should deploy'
+    value: ${{ steps.check.outputs.should_deploy }}
+  deployment_stage:
+    description: 'Deployment stage'
+    value: ${{ steps.check.outputs.deployment_stage }}
 
 runs:
   using: "composite"
@@ -19,81 +16,96 @@ runs:
     id: check
     shell: bash
     run: |
-      # Default to only running CI
-      echo "run_cd=false" >> $GITHUB_OUTPUT
+      # Function to set outputs
+      set_outputs() {
+        local should_deploy=$1
+        local stage=$2
 
-      # Check CD conditions
+        echo "should_deploy=${should_deploy}" >> $GITHUB_OUTPUT
+        echo "deployment_stage=${stage}" >> $GITHUB_OUTPUT
+
+        # For logging
+        echo "## 🚦 Workflow Validation"
+        echo "- Event Type: ${{ github.event_name }}"
+        echo "- Event Action: ${{ github.event.action }}"
+        echo "- Branch/Ref: ${{ github.ref }}"
+        echo "- Should Deploy: ${should_deploy}"
+        echo "- Deployment Stage: ${stage}"
+      } >> $GITHUB_STEP_SUMMARY
+
+      # Handle Release Events (Release_case_1 & Release_case_2)
       if [[ "${{ github.event_name }}" == "release" ]]; then
-        echo "run_cd=true" >> $GITHUB_OUTPUT
-        if [[ "${{ github.event.action }}" == "released" ]]; then
-          raw_stage="production"
-          echo "stage=production" >> $GITHUB_OUTPUT
-        else
-          raw_stage="beta"
-          echo "stage=beta" >> $GITHUB_OUTPUT
-        fi
-      elif [[ "${{ github.event_name }}" == "push" ]]; then
-        case "${{ github.ref }}" in
-          "refs/heads/production")
-            raw_stage="production"
-            raw_run_cd="true"
-            echo "run_cd=true" >> $GITHUB_OUTPUT
-            echo "stage=production" >> $GITHUB_OUTPUT
+        case "${{ github.event.action }}" in
+          "prereleased")  # Release_case_1
+            set_outputs "true" "beta"
             ;;
-          "refs/heads/staging")
-            raw_stage="beta"
-            raw_run_cd="true"
-            echo "run_cd=true" >> $GITHUB_OUTPUT
-            echo "stage=beta" >> $GITHUB_OUTPUT
-            ;;
-          "refs/heads/develop" | "refs/heads/master" | "refs/heads/main")
-            raw_stage="dev"
-            raw_run_cd="true"
-            echo "run_cd=true" >> $GITHUB_OUTPUT
-            echo "stage=dev" >> $GITHUB_OUTPUT
+          "released")     # Release_case_2
+            set_outputs "true" "production"
             ;;
         esac
-      elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.deploy }}" == "true" ]]; then
-        raw_stage="dev"
-        raw_run_cd="true"
-        echo "run_cd=true" >> $GITHUB_OUTPUT
-        echo "stage=dev" >> $GITHUB_OUTPUT
-      fi
-      {
-        echo "## 🚦 Workflow Conditions"
-        echo "- Event: ${{ github.event_name }}"
-        echo "- Action: ${{ github.event.action }}"
-        echo "- Ref: ${{ github.ref }}"
-        echo "- Run CD: $raw_run_cd"
-        echo "- Stage: $raw_stage"
-      } >> $GITHUB_STEP_SUMMARY
-
-  - name: Calculate version
-    id: version
-    if: steps.check.outputs.run_cd == 'true'
-    shell: bash
-    run: |
-      TODAY=$(date +'%Y.%m%d')
-      STAGE="${{ steps.check.outputs.stage }}"
-
-      CURRENT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml || echo "0.0.0")
-      if [[ $CURRENT_VERSION == $TODAY.* ]]; then
-        NEW_COUNT=$(($(echo $CURRENT_VERSION | cut -d. -f3 | cut -d- -f1) + 1))
-      else
-        NEW_COUNT=1
+        exit 0
       fi
 
-      NEW_VERSION="$TODAY.$NEW_COUNT"
-      case "$STAGE" in
-        "beta") NEW_VERSION="$NEW_VERSION-beta" ;;
-        "dev") NEW_VERSION="$NEW_VERSION-dev" ;;
-      esac
+      # Handle Push Events
+      if [[ "${{ github.event_name }}" == "push" ]]; then
+        case "${{ github.ref }}" in
+          "refs/heads/main"|"refs/heads/master"|"refs/heads/develop")  # Push_case_1
+            set_outputs "true" "dev"
+            ;;
+          "refs/heads/staging")  # Push_case_2
+            set_outputs "true" "beta"
+            ;;
+          "refs/heads/production")  # Push_case_3
+            set_outputs "true" "production"
+            ;;
+        esac
+        exit 0
+      fi
 
-      echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+      # Handle Pull Request Events
+      if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+        case "${{ github.base_ref }}" in
+          "main"|"master"|"develop")  # PR_case_1
+            set_outputs "false" "dev"
+            ;;
+          "staging")  # PR_case_2
+            set_outputs "false" "beta"
+            ;;
+          "production")  # PR_case_3
+            set_outputs "false" "production"
+            ;;
+        esac
+        exit 0
+      fi
 
-      {
-        echo "## 📝 Version Details"
-        echo "- Current: $CURRENT_VERSION"
-        echo "- New: $NEW_VERSION"
-        echo "- Stage: $STAGE"
-      } >> $GITHUB_STEP_SUMMARY
+      # Default fallback
+      set_outputs "false" "unknown"
+  # - name: Calculate version
+  #   id: version
+  #   if: steps.check.outputs.run_cd == 'true'
+  #   shell: bash
+  #   run: |
+  #     TODAY=$(date +'%Y.%m%d')
+  #     STAGE="${{ steps.check.outputs.stage }}"
+
+  #     CURRENT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml || echo "0.0.0")
+  #     if [[ $CURRENT_VERSION == $TODAY.* ]]; then
+  #       NEW_COUNT=$(($(echo $CURRENT_VERSION | cut -d. -f3 | cut -d- -f1) + 1))
+  #     else
+  #       NEW_COUNT=1
+  #     fi
+
+  #     NEW_VERSION="$TODAY.$NEW_COUNT"
+  #     case "$STAGE" in
+  #       "beta") NEW_VERSION="$NEW_VERSION-beta" ;;
+  #       "dev") NEW_VERSION="$NEW_VERSION-dev" ;;
+  #     esac
+
+  #     echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+  #     {
+  #       echo "## 📝 Version Details"
+  #       echo "- Current: $CURRENT_VERSION"
+  #       echo "- New: $NEW_VERSION"
+  #       echo "- Stage: $STAGE"
+  #     } >> $GITHUB_STEP_SUMMARY
