@@ -24,11 +24,11 @@ runs:
         echo "should_deploy=${should_deploy}" >> $GITHUB_OUTPUT
         echo "deployment_stage=${stage}" >> $GITHUB_OUTPUT
 
-        echo "::debug ::Event Type:            ${{ github.event_name }}"
-        echo "::debug ::Event Action:          ${{ github.event.action }}"
-        echo "::debug ::Branch/Ref:            ${{ github.ref }}"
-        echo "::notice ::Should Deploy:        ${should_deploy}"
-        echo "::notice ::Deployment Stage:     ${stage}"
+        echo "⏭️ Event Type:            ${{ github.event_name }}"
+        echo "⏭️ Event Action:          ${{ github.event.action }}"
+        echo "⏭️ Branch/Ref:            ${{ github.ref }}"
+        echo "✅ Should Deploy:         ${should_deploy}"
+        echo "✅ Deployment Stage:      ${stage}"
       } >> $GITHUB_STEP_SUMMARY
 
       # Handle Release Events (Release_case_1 & Release_case_2)
