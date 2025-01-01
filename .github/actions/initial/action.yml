@@ -39,7 +39,7 @@ runs:
           echo "<tr><th align='left'>Setting</th><th align='left'>Value</th></tr>"
           echo "<tr><td>Should Deploy</td><td><code>${should_deploy}</code></td></tr>"
           echo "<tr><td>Stage</td><td><code>${stage}</code></td></tr>"
-          echo "<tr><td></td><td><code></code></td></tr>"
+          echo "<tr><td></td><td></td></tr>"
           echo "</table>"
           echo "</td>"
           echo "</tr></table></div>"
