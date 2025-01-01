@@ -1,0 +1,33 @@
+name: Pre-Commit Linter
+description: 'Run pre-commit linter on your codebase'
+
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.12'
+
+runs:
+  using: "composite"
+  steps:
+  - name: Set up Python ${{ inputs.python-version }}
+    uses: actions/setup-python@v5
+    with:
+      python-version: ${{ inputs.python-version }}
+      cache: pip
+      cache-dependency-path: |
+        requirements.txt
+        .pre-commit-config.yaml
+
+  - name: Pre-Commit Action
+    uses: pre-commit/action@v3.0.0
+
+  - name: Linter Summary
+    shell: bash
+    run: |
+      echo "### 🔍 Linting Results" >> $GITHUB_STEP_SUMMARY
+      if [ ${{ job.status }} == 'success' ]; then
+        echo "✅ All linting checks passed" >> $GITHUB_STEP_SUMMARY
+      else
+        echo "❌ Linting failed" >> $GITHUB_STEP_SUMMARY
+      fi
