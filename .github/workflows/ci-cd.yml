@@ -45,7 +45,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Pre-Commit Linter
-      uses: ./.github/actions/python-linter
+      uses: ./.github/actions/pre-commit-linter
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
@@ -57,6 +57,6 @@ jobs:
       uses: actions/checkout@v4
 
     - name: PyTest Coverage
-      uses: ./.github/actions/testing/pytest.yml
+      uses: ./.github/actions/pytest-coverage
       with:
         python-version: ${{ env.PYTHON_VERSION }}
