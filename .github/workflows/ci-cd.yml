@@ -52,12 +52,6 @@ jobs:
       id: initial
       uses: ./.github/actions/initial
 
-    - name: Set Environment Variables
-      run: |
-        echo "should_deploy=${{ steps.initial.outputs.should_deploy }}" >> $GITHUB_ENV
-        echo "deployment_stage=${{ steps.initial.outputs.deployment_stage }}" >> $GITHUB_ENV
-        echo "VERSION=${{ steps.initial.outputs.version }}" >> $GITHUB_ENV
-
   pre-commit-linter:
     runs-on: ubuntu-latest
     steps:
@@ -83,6 +77,7 @@ jobs:
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   django-python-build:
+    if: ${{ needs.initial_workflow.outputs.should_deploy == 'true' }}
     needs: [initial_workflow, django-pytest-coverage]
     runs-on: ubuntu-latest
     permissions:
@@ -91,8 +86,8 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Python Build
+    - name: Python Build ${{ needs.initial_workflow.outputs.version }}
       uses: ./.github/actions/python-build
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        version-name: ${{ env.VERSION }}
+        version-name: ${{ needs.initial_workflow.outputs.version }}
