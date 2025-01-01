@@ -60,3 +60,4 @@ jobs:
       uses: ./.github/actions/pytest-coverage
       with:
         python-version: ${{ env.PYTHON_VERSION }}
+        codecov-token: ${{ secrets.CODECOV_TOKEN }}

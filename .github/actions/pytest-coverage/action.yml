@@ -6,6 +6,9 @@ inputs:
     description: 'Python version to use'
     required: false
     default: '3.12'
+  codecov-token:
+    description: 'Codecov token'
+    required: true
 
 runs:
   using: "composite"
@@ -52,7 +55,7 @@ runs:
     if: env.PYTEST_EXIT_CODE == 0
     uses: codecov/codecov-action@v4
     with:
-      token: ${{ secrets.CODECOV_TOKEN }}
+      token: ${{ inputs.codecov-token }}
       files: ./coverage.xml
       flags: unittests
       fail_ci_if_error: true
