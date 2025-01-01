@@ -4,19 +4,19 @@ description: 'Set initial environment variables for the workflow'
 outputs:
   should_deploy:
     description: 'Should deploy'
-    value: ${{ steps.check.outputs.should_deploy }}
+    value: ${{ steps.initial_calculate_version.outputs.should_deploy }}
   deployment_stage:
     description: 'Deployment stage'
-    value: ${{ steps.check.outputs.deployment_stage }}
+    value: ${{ steps.initial_calculate_version.outputs.deployment_stage }}
   version:
     description: 'New version'
-    value: ${{ steps.check.outputs.version }}
+    value: ${{ steps.initial_calculate_version.outputs.version }}
 
 runs:
   using: "composite"
   steps:
-  - name: Validate and calculate version
-    id: validate
+  - name: Initial and calculate version
+    id: initial_calculate_version
     shell: bash
     run: |
       # Function to print workflow summary in HTML format
