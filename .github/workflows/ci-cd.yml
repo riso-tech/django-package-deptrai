@@ -38,8 +38,11 @@ on:
       ]
 
 jobs:
-  validate:
+  initial_workflow:
     runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.initial.outputs.should_deploy }}
+      deployment_stage: ${{ steps.initial.outputs.deployment_stage }}
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
