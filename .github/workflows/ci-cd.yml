@@ -1,0 +1,39 @@
+name: Django Package CI/CD
+
+env:
+  PYTHON_VERSION: '3.12'
+  TWINE_USERNAME: __token__
+
+on:
+  push:
+    branches: [
+      main, master, develop,  # Push_case_1
+      staging,                # Push_case_2
+      production              # Push_case_3
+    ]
+    paths:
+      - django_package_name/**
+
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [
+      main, master, develop,  # PR_case_1
+      staging,                # PR_case_2
+      production              # PR_case_3
+    ]
+    paths:
+      - django_package_name/**
+
+  release:
+    types: [
+      prereleased,            # Release_case_1
+      released                # Release_case_2
+    ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/python-linter
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
