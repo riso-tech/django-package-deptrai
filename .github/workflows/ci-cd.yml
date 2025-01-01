@@ -63,8 +63,10 @@ jobs:
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
   Django-Python-Build:
-    runs-on: ubuntu-latest
     needs: Django-PyTest-Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4

@@ -12,8 +12,6 @@ inputs:
 
 runs:
   using: "composite"
-  permissions:
-    packages: write
   steps:
   - name: Set up Python ${{ inputs.python-version }}
     uses: actions/setup-python@v5
