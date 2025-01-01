@@ -34,6 +34,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/python-linter/action.yml
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/python-linter
         with:
           python-version: ${{ env.PYTHON_VERSION }}
