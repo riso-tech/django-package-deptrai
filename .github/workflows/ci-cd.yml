@@ -38,41 +38,57 @@ on:
       ]
 
 jobs:
-  Pre-Commit-Linter:
+  Validate:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Pre-Commit Linter
-      uses: ./.github/actions/pre-commit-linter
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
+    - name: Initial
+      id: initial
+      uses: ./.github/actions/initial
 
-  Django-PyTest-Coverage:
-    runs-on: ubuntu-latest
-    needs: Pre-Commit-Linter
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+    - name: Set Environment Variables
+      run: |
+        echo "RUN_CD=${{ steps.initial.outputs.run_cd }}" >> $GITHUB_ENV
+        echo "STAGE=${{ steps.initial.outputs.stage }}" >> $GITHUB_ENV
+        echo "VERSION=${{ steps.initial.outputs.version }}" >> $GITHUB_ENV
 
-    - name: PyTest Coverage
-      uses: ./.github/actions/pytest-coverage
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        codecov-token: ${{ secrets.CODECOV_TOKEN }}
+  # Pre-Commit-Linter:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout Repository
+  #     uses: actions/checkout@v4
 
-  Django-Python-Build:
-    needs: Django-PyTest-Coverage
-    runs-on: ubuntu-latest
-    permissions:
-      packages: write
-    steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+  #   - name: Pre-Commit Linter
+  #     uses: ./.github/actions/pre-commit-linter
+  #     with:
+  #       python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Python Build
-      uses: ./.github/actions/python-build
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        version-name: 'DJANGO_NAME'  # TODO: Update when Have Valiate
+  # Django-PyTest-Coverage:
+  #   runs-on: ubuntu-latest
+  #   needs: Pre-Commit-Linter
+  #   steps:
+  #   - name: Checkout Repository
+  #     uses: actions/checkout@v4
+
+  #   - name: PyTest Coverage
+  #     uses: ./.github/actions/pytest-coverage
+  #     with:
+  #       python-version: ${{ env.PYTHON_VERSION }}
+  #       codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Django-Python-Build:
+  #   needs: Django-PyTest-Coverage
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     packages: write
+  #   steps:
+  #   - name: Checkout Repository
+  #     uses: actions/checkout@v4
+
+  #   - name: Python Build
+  #     uses: ./.github/actions/python-build
+  #     with:
+  #       python-version: ${{ env.PYTHON_VERSION }}
+  #       version-name: 'DJANGO_NAME'  # TODO: Update when Have Valiate

@@ -1,0 +1,99 @@
+name: Initial
+description: 'Build release distributions for Python package'
+
+outputs:
+  run_cd:
+    description: 'Run CD'
+    value: ${{ steps.check.outputs.run_cd }}
+  stage:
+    description: 'Stage'
+    value: ${{ steps.check.outputs.stage }}
+  version:
+    description: 'Stage'
+    value: ${{ steps.check.outputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+  - name: Validate workflow conditions
+    id: check
+    shell: bash
+    run: |
+      # Default to only running CI
+      echo "run_cd=false" >> $GITHUB_OUTPUT
+
+      # Check CD conditions
+      if [[ "${{ github.event_name }}" == "release" ]]; then
+        echo "run_cd=true" >> $GITHUB_OUTPUT
+        if [[ "${{ github.event.action }}" == "released" ]]; then
+          raw_stage="production"
+          echo "stage=production" >> $GITHUB_OUTPUT
+        else
+          raw_stage="beta"
+          echo "stage=beta" >> $GITHUB_OUTPUT
+        fi
+      elif [[ "${{ github.event_name }}" == "push" ]]; then
+        case "${{ github.ref }}" in
+          "refs/heads/production")
+            raw_stage="production"
+            raw_run_cd="true"
+            echo "run_cd=true" >> $GITHUB_OUTPUT
+            echo "stage=production" >> $GITHUB_OUTPUT
+            ;;
+          "refs/heads/staging")
+            raw_stage="beta"
+            raw_run_cd="true"
+            echo "run_cd=true" >> $GITHUB_OUTPUT
+            echo "stage=beta" >> $GITHUB_OUTPUT
+            ;;
+          "refs/heads/develop" | "refs/heads/master" | "refs/heads/main")
+            raw_stage="dev"
+            raw_run_cd="true"
+            echo "run_cd=true" >> $GITHUB_OUTPUT
+            echo "stage=dev" >> $GITHUB_OUTPUT
+            ;;
+        esac
+      elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.deploy }}" == "true" ]]; then
+        raw_stage="dev"
+        raw_run_cd="true"
+        echo "run_cd=true" >> $GITHUB_OUTPUT
+        echo "stage=dev" >> $GITHUB_OUTPUT
+      fi
+      {
+        echo "## 🚦 Workflow Conditions"
+        echo "- Event: ${{ github.event_name }}"
+        echo "- Action: ${{ github.event.action }}"
+        echo "- Ref: ${{ github.ref }}"
+        echo "- Run CD: $raw_run_cd"
+        echo "- Stage: $raw_stage"
+      } >> $GITHUB_STEP_SUMMARY
+
+  - name: Calculate version
+    id: version
+    if: steps.check.outputs.run_cd == 'true'
+    shell: bash
+    run: |
+      TODAY=$(date +'%Y.%m%d')
+      STAGE="${{ steps.check.outputs.stage }}"
+
+      CURRENT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml || echo "0.0.0")
+      if [[ $CURRENT_VERSION == $TODAY.* ]]; then
+        NEW_COUNT=$(($(echo $CURRENT_VERSION | cut -d. -f3 | cut -d- -f1) + 1))
+      else
+        NEW_COUNT=1
+      fi
+
+      NEW_VERSION="$TODAY.$NEW_COUNT"
+      case "$STAGE" in
+        "beta") NEW_VERSION="$NEW_VERSION-beta" ;;
+        "dev") NEW_VERSION="$NEW_VERSION-dev" ;;
+      esac
+
+      echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      {
+        echo "## 📝 Version Details"
+        echo "- Current: $CURRENT_VERSION"
+        echo "- New: $NEW_VERSION"
+        echo "- Stage: $STAGE"
+      } >> $GITHUB_STEP_SUMMARY
