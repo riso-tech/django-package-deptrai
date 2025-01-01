@@ -13,152 +13,152 @@ runs:
   using: "composite"
   steps:
   - name: Validate and calculate version
-  id: validate
-  shell: bash
-  run: |
-    # Function to print workflow summary in HTML format
-    print_summary() {
-      local event_name=$1
-      local event_action=$2
-      local ref=$3
-      local should_deploy=$4
-      local deploy_stage=$5
-      local version=$6
+    id: validate
+    shell: bash
+    run: |
+      # Function to print workflow summary in HTML format
+      print_summary() {
+        local event_name=$1
+        local event_action=$2
+        local ref=$3
+        local should_deploy=$4
+        local deploy_stage=$5
+        local version=$6
 
-      {
-        echo "<h2>🚦 Workflow Summary</h2>"
-        echo "<div><table width='100%'><tr>"
+        {
+          echo "<h2>🚦 Workflow Summary</h2>"
+          echo "<div><table width='100%'><tr>"
 
-        # Event Information
-        echo "<td width='50%'>"
-        echo "<h3>Event Details</h3>"
-        echo "<table width='100%'>"
-        echo "<tr><th align='left'>Type</th><th align='left'>Value</th></tr>"
-        echo "<tr><td>Event Type</td><td><code>${event_name}</code></td></tr>"
-        echo "<tr><td>Event Action</td><td><code>${event_action}</code></td></tr>"
-        echo "<tr><td>Branch/Ref</td><td><code>${ref}</code></td></tr>"
-        echo "</table>"
-        echo "</td>"
-
-        # Deployment Information
-        echo "<td width='50%'>"
-        echo "<h3>Deployment Details</h3>"
-        echo "<table width='100%'>"
-        echo "<tr><th align='left'>Setting</th><th align='left'>Value</th></tr>"
-        echo "<tr><td>Should Deploy</td><td><code>${should_deploy}</code></td></tr>"
-        echo "<tr><td>Deploy Stage</td><td><code>${deploy_stage}</code></td></tr>"
-        if [[ -n "${version}" ]]; then
-          echo "<tr><td>New Version</td><td><code>${version}</code></td></tr>"
-        fi
-        echo "</table>"
-        echo "</td>"
-
-        echo "</tr></table></div>"
-
-        # Version Details (if available)
-        if [[ -n "${version}" && -n "${CURRENT_VERSION}" ]]; then
-          echo "<h3>📝 Version Update</h3>"
+          # Event Information
+          echo "<td width='50%'>"
+          echo "<h3>Event Details</h3>"
           echo "<table width='100%'>"
           echo "<tr><th align='left'>Type</th><th align='left'>Value</th></tr>"
-          echo "<tr><td>Current Version</td><td><code>${CURRENT_VERSION}</code></td></tr>"
-          echo "<tr><td>New Version</td><td><code>${version}</code></td></tr>"
+          echo "<tr><td>Event Type</td><td><code>${event_name}</code></td></tr>"
+          echo "<tr><td>Event Action</td><td><code>${event_action}</code></td></tr>"
+          echo "<tr><td>Branch/Ref</td><td><code>${ref}</code></td></tr>"
           echo "</table>"
+          echo "</td>"
+
+          # Deployment Information
+          echo "<td width='50%'>"
+          echo "<h3>Deployment Details</h3>"
+          echo "<table width='100%'>"
+          echo "<tr><th align='left'>Setting</th><th align='left'>Value</th></tr>"
+          echo "<tr><td>Should Deploy</td><td><code>${should_deploy}</code></td></tr>"
+          echo "<tr><td>Deploy Stage</td><td><code>${deploy_stage}</code></td></tr>"
+          if [[ -n "${version}" ]]; then
+            echo "<tr><td>New Version</td><td><code>${version}</code></td></tr>"
+          fi
+          echo "</table>"
+          echo "</td>"
+
+          echo "</tr></table></div>"
+
+          # Version Details (if available)
+          if [[ -n "${version}" && -n "${CURRENT_VERSION}" ]]; then
+            echo "<h3>📝 Version Update</h3>"
+            echo "<table width='100%'>"
+            echo "<tr><th align='left'>Type</th><th align='left'>Value</th></tr>"
+            echo "<tr><td>Current Version</td><td><code>${CURRENT_VERSION}</code></td></tr>"
+            echo "<tr><td>New Version</td><td><code>${version}</code></td></tr>"
+            echo "</table>"
+          fi
+        } >> $GITHUB_STEP_SUMMARY
+      }
+
+      # Function to calculate new version
+      calculate_version() {
+        local deploy_stage=$1
+        local TODAY=$(date +'%Y.%m%d')
+        CURRENT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml || echo "0.0.0")
+
+        # Calculate version number
+        if [[ $CURRENT_VERSION == $TODAY.* ]]; then
+          local NEW_COUNT=$(($(echo $CURRENT_VERSION | cut -d. -f3 | cut -d- -f1) + 1))
+        else
+          local NEW_COUNT=1
         fi
-      } >> $GITHUB_STEP_SUMMARY
-    }
 
-    # Function to calculate new version
-    calculate_version() {
-      local deploy_stage=$1
-      local TODAY=$(date +'%Y.%m%d')
-      CURRENT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml || echo "0.0.0")
+        # Set version with stage suffix
+        local NEW_VERSION="$TODAY.$NEW_COUNT"
+        case "$deploy_stage" in
+          "beta") NEW_VERSION="$NEW_VERSION-beta" ;;
+          "dev") NEW_VERSION="$NEW_VERSION-dev" ;;
+        esac
 
-      # Calculate version number
-      if [[ $CURRENT_VERSION == $TODAY.* ]]; then
-        local NEW_COUNT=$(($(echo $CURRENT_VERSION | cut -d. -f3 | cut -d- -f1) + 1))
-      else
-        local NEW_COUNT=1
+        echo "$NEW_VERSION"
+      }
+
+      # Function to set outputs
+      set_outputs() {
+        local should_deploy=$1
+        local deploy_stage=$2
+        local version=""
+
+        echo "should_deploy=${should_deploy}" >> $GITHUB_OUTPUT
+        echo "deploy_stage=${deploy_stage}" >> $GITHUB_OUTPUT
+
+        # Calculate version only if should_deploy is true
+        if [[ "$should_deploy" == "true" ]]; then
+          version=$(calculate_version "$deploy_stage")
+          echo "version=${version}" >> $GITHUB_OUTPUT
+        fi
+
+        # Print summary
+        print_summary \
+          "${{ github.event_name }}" \
+          "${{ github.event.action }}" \
+          "${{ github.ref }}" \
+          "${should_deploy}" \
+          "${deploy_stage}" \
+          "${version}"
+      }
+
+      # Handle Release Events (Release_case_1 & Release_case_2)
+      if [[ "${{ github.event_name }}" == "release" ]]; then
+        case "${{ github.event.action }}" in
+          "prereleased")  # Release_case_1
+            set_outputs "true" "beta"
+            ;;
+          "released")     # Release_case_2
+            set_outputs "true" "production"
+            ;;
+        esac
+        exit 0
       fi
 
-      # Set version with stage suffix
-      local NEW_VERSION="$TODAY.$NEW_COUNT"
-      case "$deploy_stage" in
-        "beta") NEW_VERSION="$NEW_VERSION-beta" ;;
-        "dev") NEW_VERSION="$NEW_VERSION-dev" ;;
-      esac
-
-      echo "$NEW_VERSION"
-    }
-
-    # Function to set outputs
-    set_outputs() {
-      local should_deploy=$1
-      local deploy_stage=$2
-      local version=""
-
-      echo "should_deploy=${should_deploy}" >> $GITHUB_OUTPUT
-      echo "deploy_stage=${deploy_stage}" >> $GITHUB_OUTPUT
-
-      # Calculate version only if should_deploy is true
-      if [[ "$should_deploy" == "true" ]]; then
-        version=$(calculate_version "$deploy_stage")
-        echo "version=${version}" >> $GITHUB_OUTPUT
+      # Handle Push Events
+      if [[ "${{ github.event_name }}" == "push" ]]; then
+        case "${{ github.ref }}" in
+          "refs/heads/main"|"refs/heads/master"|"refs/heads/develop")  # Push_case_1
+            set_outputs "true" "dev"
+            ;;
+          "refs/heads/staging")  # Push_case_2
+            set_outputs "true" "beta"
+            ;;
+          "refs/heads/production")  # Push_case_3
+            set_outputs "true" "production"
+            ;;
+        esac
+        exit 0
       fi
 
-      # Print summary
-      print_summary \
-        "${{ github.event_name }}" \
-        "${{ github.event.action }}" \
-        "${{ github.ref }}" \
-        "${should_deploy}" \
-        "${deploy_stage}" \
-        "${version}"
-    }
+      # Handle Pull Request Events
+      if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+        case "${{ github.base_ref }}" in
+          "main"|"master"|"develop")  # PR_case_1
+            set_outputs "false" "dev"
+            ;;
+          "staging")  # PR_case_2
+            set_outputs "false" "beta"
+            ;;
+          "production")  # PR_case_3
+            set_outputs "false" "production"
+            ;;
+        esac
+        exit 0
+      fi
 
-    # Handle Release Events (Release_case_1 & Release_case_2)
-    if [[ "${{ github.event_name }}" == "release" ]]; then
-      case "${{ github.event.action }}" in
-        "prereleased")  # Release_case_1
-          set_outputs "true" "beta"
-          ;;
-        "released")     # Release_case_2
-          set_outputs "true" "production"
-          ;;
-      esac
-      exit 0
-    fi
-
-    # Handle Push Events
-    if [[ "${{ github.event_name }}" == "push" ]]; then
-      case "${{ github.ref }}" in
-        "refs/heads/main"|"refs/heads/master"|"refs/heads/develop")  # Push_case_1
-          set_outputs "true" "dev"
-          ;;
-        "refs/heads/staging")  # Push_case_2
-          set_outputs "true" "beta"
-          ;;
-        "refs/heads/production")  # Push_case_3
-          set_outputs "true" "production"
-          ;;
-      esac
-      exit 0
-    fi
-
-    # Handle Pull Request Events
-    if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-      case "${{ github.base_ref }}" in
-        "main"|"master"|"develop")  # PR_case_1
-          set_outputs "false" "dev"
-          ;;
-        "staging")  # PR_case_2
-          set_outputs "false" "beta"
-          ;;
-        "production")  # PR_case_3
-          set_outputs "false" "production"
-          ;;
-      esac
-      exit 0
-    fi
-
-    # Default fallback
-    set_outputs "false" "unknown"
+      # Default fallback
+      set_outputs "false" "unknown"
