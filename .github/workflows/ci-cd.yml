@@ -31,7 +31,7 @@ on:
     ]
 
 jobs:
-  test:
+  Pre-Commit-Linter:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
