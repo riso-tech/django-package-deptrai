@@ -61,3 +61,15 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
+
+  Django-Python-Build:
+    runs-on: ubuntu-latest
+    needs: Django-PyTest-Coverage
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Python Build
+      uses: ./.github/actions/python-build
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
