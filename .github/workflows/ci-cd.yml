@@ -44,6 +44,7 @@ jobs:
       should_deploy: ${{ steps.initial.outputs.should_deploy }}
       deployment_stage: ${{ steps.initial.outputs.deployment_stage }}
       version: ${{ steps.initial.outputs.version }}
+      publish_type: ${{ steps.initial.outputs.publish_type }}
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v4

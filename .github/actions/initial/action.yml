@@ -1,5 +1,5 @@
 name: Initial Environment Variables
-description: 'Set initial environment variables for the workflow'
+description: 'Set initial environment variables and determine workflow flow'
 
 outputs:
   should_deploy:
@@ -11,6 +11,9 @@ outputs:
   version:
     description: 'New version'
     value: ${{ steps.initial_calculate_version.outputs.version }}
+  publish_type:
+    description: 'Type of publishing process'
+    value: ${{ steps.initial_calculate_version.outputs.publish_type }}
 
 runs:
   using: "composite"
@@ -27,6 +30,7 @@ runs:
         local should_deploy=$4
         local deploy_stage=$5
         local version=$6
+        local publish_type=$7
 
         {
           echo "<div><table width='100%'><tr>"
@@ -50,22 +54,15 @@ runs:
           echo "<tr><td>Should Deploy</td><td><code>${should_deploy}</code></td></tr>"
           echo "<tr><td>Deploy Stage</td><td><code>${deploy_stage}</code></td></tr>"
           if [[ -n "${version}" ]]; then
-            echo "<tr><td>New Version</td><td><code>${version}</code></td></tr>"
+            echo "<tr><td>Version</td><td><code>${version}</code></td></tr>"
+          fi
+          if [[ -n "${publish_type}" ]]; then
+            echo "<tr><td>Publish Type</td><td><code>${publish_type}</code></td></tr>"
           fi
           echo "</table>"
           echo "</td>"
 
           echo "</tr></table></div>"
-
-          # Version Details (if available)
-          if [[ -n "${version}" && -n "${CURRENT_VERSION}" ]]; then
-            echo "<h3>📝 Version Update</h3>"
-            echo "<table width='100%'>"
-            echo "<tr><th align='left'>Type</th><th align='left'>Value</th></tr>"
-            echo "<tr><td>Current Version</td><td><code>${CURRENT_VERSION}</code></td></tr>"
-            echo "<tr><td>New Version</td><td><code>${version}</code></td></tr>"
-            echo "</table>"
-          fi
         } >> $GITHUB_STEP_SUMMARY
       }
 
@@ -92,19 +89,55 @@ runs:
         echo "$NEW_VERSION"
       }
 
+      # Function to determine publish type
+      determine_publish_type() {
+        local event_name=$1
+        local event_action=$2
+        local deploy_stage=$3
+
+        # Return values:
+        # - direct: publish directly without creating release
+        # - release: trigger release flow
+        # - prerelease: trigger prerelease flow
+        # - skip: no publish needed
+
+        if [[ "$event_name" == "push" ]]; then
+          case "$deploy_stage" in
+            "dev") echo "direct" ;;
+            "beta") echo "prerelease" ;;
+            "production") echo "release" ;;
+            *) echo "skip" ;;
+          esac
+        elif [[ "$event_name" == "release" ]]; then
+          if [[ "$event_action" == "prereleased" ]]; then
+            echo "prerelease"
+          elif [[ "$event_action" == "released" ]]; then
+            echo "release"
+          else
+            echo "skip"
+          fi
+        else
+          echo "skip"
+        fi
+      }
+
       # Function to set outputs
       set_outputs() {
         local should_deploy=$1
         local deploy_stage=$2
         local version=""
+        local publish_type=""
 
         echo "should_deploy=${should_deploy}" >> $GITHUB_OUTPUT
-        echo "deploy_stage=${deploy_stage}" >> $GITHUB_OUTPUT
+        echo "deployment_stage=${deploy_stage}" >> $GITHUB_OUTPUT
 
-        # Calculate version only if should_deploy is true
+        # Calculate version and publish type only if should_deploy is true
         if [[ "$should_deploy" == "true" ]]; then
           version=$(calculate_version "$deploy_stage")
           echo "version=${version}" >> $GITHUB_OUTPUT
+
+          publish_type=$(determine_publish_type "${{ github.event_name }}" "${{ github.event.action }}" "$deploy_stage")
+          echo "publish_type=${publish_type}" >> $GITHUB_OUTPUT
         fi
 
         # Print summary
@@ -114,16 +147,17 @@ runs:
           "${{ github.ref }}" \
           "${should_deploy}" \
           "${deploy_stage}" \
-          "${version}"
+          "${version}" \
+          "${publish_type}"
       }
 
-      # Handle Release Events (Release_case_1 & Release_case_2)
+      # Handle Release Events
       if [[ "${{ github.event_name }}" == "release" ]]; then
         case "${{ github.event.action }}" in
-          "prereleased")  # Release_case_1
+          "prereleased")
             set_outputs "true" "beta"
             ;;
-          "released")     # Release_case_2
+          "released")
             set_outputs "true" "production"
             ;;
         esac
@@ -133,30 +167,14 @@ runs:
       # Handle Push Events
       if [[ "${{ github.event_name }}" == "push" ]]; then
         case "${{ github.ref }}" in
-          "refs/heads/main"|"refs/heads/master"|"refs/heads/develop")  # Push_case_1
+          "refs/heads/main"|"refs/heads/master"|"refs/heads/develop")
             set_outputs "true" "dev"
             ;;
-          "refs/heads/staging")  # Push_case_2
+          "refs/heads/staging")
             set_outputs "true" "beta"
             ;;
-          "refs/heads/production")  # Push_case_3
+          "refs/heads/production")
             set_outputs "true" "production"
-            ;;
-        esac
-        exit 0
-      fi
-
-      # Handle Pull Request Events
-      if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-        case "${{ github.base_ref }}" in
-          "main"|"master"|"develop")  # PR_case_1
-            set_outputs "false" "dev"
-            ;;
-          "staging")  # PR_case_2
-            set_outputs "false" "beta"
-            ;;
-          "production")  # PR_case_3
-            set_outputs "false" "production"
             ;;
         esac
         exit 0
