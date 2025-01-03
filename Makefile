@@ -70,6 +70,13 @@ dev-compile: dev-pip
 # dev
 .PHONY: dev
 dev: dev-init dev-sync
+	@pip install -r requirements.txt
+	@echo "Done!"
+
+# test
+.PHONY: test
+test:
+	@coverage run -m pytest --create-db -v && coverage report -m
 	@echo "Done!"
 
 # Next
