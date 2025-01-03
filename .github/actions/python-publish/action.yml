@@ -1,0 +1,30 @@
+name: Python Publish
+description: 'Publish release distributions for Python package to PyPI'
+
+inputs:
+  pypi-url:
+    description: 'PyPI repository URL'
+    required: false
+    default: 'https://upload.pypi.org/legacy/'
+  pypi-token:
+    description: 'PyPI token'
+    required: true
+  package-name:
+    description: 'Version name of the package'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+  - name: Download all the dists
+    uses: actions/download-artifact@v4
+    with:
+      name: ${{ inputs.package-name }}
+      path: dist/
+
+  - name: Publish distribution 📦 to PyPI
+    uses: pypa/gh-action-pypi-publish@release/v1
+    with:
+      repository-url: ${{ inputs.pypi-url }}
+      username: '__token__'
+      password: ${{ inputs.pypi-token }}

@@ -91,4 +91,40 @@ jobs:
       uses: ./.github/actions/python-build
       with:
         python-version: ${{ env.PYTHON_VERSION }}
-        version-name: ${{ needs.initial_workflow.outputs.version }}
+        package-name: ${{ needs.initial_workflow.outputs.version }}
+
+  django-python-publish:
+    if: ${{ needs.initial_workflow.outputs.should_deploy == 'true' }}
+    needs: [django-python-build]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      id-token: write
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Check Repository Visibility
+      id: repo-visibility
+      run: |
+        visibility=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        https://api.github.com/repos/${{ github.repository }} | jq -r .visibility)
+        echo "visibility=$visibility" >> $GITHUB_OUTPUT
+
+    - name: Python Publish ${{ needs.initial_workflow.outputs.version }} to Private PyPi
+      if: steps.repo-visibility.outputs.visibility == 'private'
+      uses: ./.github/actions/python-publish
+      with:
+        package-name: ${{ needs.initial_workflow.outputs.version }}
+        publish-type: ${{ needs.initial_workflow.outputs.publish_type }}
+        twine-username: ${{ env.TWINE_USERNAME }}
+        twine-password: ${{ secrets.PYPI_PASSWORD }}
+
+    - name: Python Publish ${{ needs.initial_workflow.outputs.version }} to PyPi
+      if: steps.repo-visibility.outputs.visibility == 'public'
+      uses: ./.github/actions/python-publish
+      with:
+        package-name: ${{ needs.initial_workflow.outputs.version }}
+        publish-type: ${{ needs.initial_workflow.outputs.publish_type }}
+        twine-username: ${{ env.TWINE_USERNAME }}
+        twine-password: ${{ secrets.PYPI_PASSWORD }}
